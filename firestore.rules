@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /runs/{runId} {
+      // Рейтинг читають усі.
+      allow read: if true;
+
+      // Створювати запис може лише користувач з анонімною авторизацією, один раз, без змін після.
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name','wave','kills','score','arena','picks','bossKills','secs','pickups','dealt','stats','lvl','skills','gear','uid','createdAt'])
+        && request.resource.data.keys().hasAll(['name','wave','kills','score','uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 16
+        && request.resource.data.wave is int && request.resource.data.wave >= 1 && request.resource.data.wave <= 500
+        && request.resource.data.kills is int && request.resource.data.kills >= 0
+        && request.resource.data.kills <= request.resource.data.wave * 100
+        && request.resource.data.score == request.resource.data.wave * 1000000 + request.resource.data.kills
+        && (!('arena' in request.resource.data) || (request.resource.data.arena is string && request.resource.data.arena.size() <= 30))
+        && (!('picks' in request.resource.data) || (request.resource.data.picks is list && request.resource.data.picks.size() <= 300))
+        && (!('stats' in request.resource.data) || request.resource.data.stats is map)
+        && (!('lvl' in request.resource.data) || (request.resource.data.lvl is int && request.resource.data.lvl >= 1 && request.resource.data.lvl <= 500))
+        && (!('skills' in request.resource.data) || request.resource.data.skills is map)
+        && (!('gear' in request.resource.data) || (request.resource.data.gear is list && request.resource.data.gear.size() <= 4));
+
+      allow update, delete: if false;
+    }
+  }
+}
